@@ -1,8 +1,19 @@
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
 const axios = require("axios");
+
+const app = express();
+const PORT = process.env.PORT || 3000;
 
 // CWA API 設定
 const CWA_API_BASE_URL = "https://opendata.cwa.gov.tw/api";
 const CWA_API_KEY = process.env.CWA_API_KEY;
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 /**
  * 取得高雄天氣預報
@@ -31,7 +42,7 @@ const getKaohsiungWeather = async (req, res) => {
       }
     );
 
-    // 取得臺中市的天氣資料
+    // 取得高雄市的天氣資料
     const locationData = response.data.records.location[0];
 
     if (!locationData) {
@@ -115,6 +126,41 @@ const getKaohsiungWeather = async (req, res) => {
   }
 };
 
-module.exports = {
-  getKaohsiungWeather,
-};
+// Routes
+app.get("/", (req, res) => {
+  res.json({
+    message: "歡迎使用 CWA 天氣預報 API",
+    endpoints: {
+      kaohsiung: "/api/weather/kaohsiung",
+      health: "/api/health",
+    },
+  });
+});
+
+app.get("/api/health", (req, res) => {
+  res.json({ status: "OK", timestamp: new Date().toISOString() });
+});
+
+// 取得高雄天氣預報
+app.get("/api/weather/kaohsiung", getKaohsiungWeather);
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({
+    error: "伺服器錯誤",
+    message: err.message,
+  });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    error: "找不到此路徑",
+  });
+});
+
+app.listen(PORT, () => {
+  console.log(`🚀 伺服器運行已運作`);
+  console.log(`📍 環境: ${process.env.NODE_ENV || "development"}`);
+});
